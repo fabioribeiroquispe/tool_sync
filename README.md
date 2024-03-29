@@ -19,7 +19,7 @@ Alternatively, you can download the project source code from the repository and 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/fabiorisantosquispe/robot-azure-sync.git
+git clone https://github.com/fabiorisantosquispe/robot_azure_sync.git
 ```
 
 2. Navigate to the project directory:

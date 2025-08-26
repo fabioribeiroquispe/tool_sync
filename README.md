@@ -128,3 +128,13 @@ This is the description of my new user story.
 ```
 
 The next time you run `tool_sync sync`, the tool will detect this new file, create a corresponding User Story in Azure DevOps, and then update the local file with the newly assigned ID.
+
+## Advanced Analysis with AI
+
+This repository also includes a standalone **Analysis Server** that uses a Retrieval-Augmented Generation (RAG) pipeline to allow you to perform advanced analysis on your synchronized work items.
+
+You can use it to ask complex questions about your project's data, find patterns, and identify root causes using the power of Large Language Models (LLMs).
+
+This server is designed to be used as a custom tool with AI assistants like the [Cline VS Code extension](https://marketplace.visualstudio.com/items?itemName=cline.bot).
+
+For detailed instructions on how to set up and use the analysis server, please see the [README in the `analysis_server` directory](./analysis_server/README.md).

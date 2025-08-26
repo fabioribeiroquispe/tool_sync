@@ -1,0 +1,30 @@
+azure_devops:
+  organization_url: "https://dev.azure.com/your_org"
+  project_name: "your_project"
+  personal_access_token: "your_pat"
+
+sync_mappings:
+  - name: "User Stories to Markdown"
+    work_item_type: "User Story"
+    local_path: "work_items/user_stories"
+    file_format: "md"
+    conflict_resolution: "manual" # 'local-wins', 'remote-wins', 'manual'
+    # Template for generating file content from a work item
+    template: |
+      ---
+      id: {{ id }}
+      type: {{ type }}
+      state: {{ state }}
+      created_date: {{ created_date }}
+      changed_date: {{ changed_date }}
+      ---
+
+      # {{ title }}
+
+      {{ description }}
+
+  - name: "Bugs to JSON"
+    work_item_type: "Bug"
+    local_path: "work_items/bugs"
+    file_format: "json"
+    conflict_resolution: "remote-wins"

@@ -1,98 +1,125 @@
-# Robot Framework Azure Sync 
+# Tool Sync: Bidirectional Azure DevOps Synchronization
 
 ## Overview
 
-The **Robot Framework Azure Sync** package provides synchronization capabilities for Azure-related tasks. It includes scripts to retrieve data from Azure Test Cases **(`robot_azure_sync_get.py`)**, to update Azure Test Cases **(`robot_azure_sync_patch.py`)**, and to run Robot Framework tests with specific tags.
+**Tool Sync** is a powerful and flexible command-line tool that provides bidirectional synchronization between Azure DevOps work items and local files. Unlike other tools that are often unidirectional or limited to specific work item types, Tool Sync allows you to keep any type of work item (User Stories, Bugs, Tasks, etc.) in sync with local files in your Git repository.
+
+This enables a "Work-Items-as-Code" approach, where your Azure DevOps project can be treated as a single source of truth that is perfectly mirrored in a local directory, allowing you to leverage the power of your favorite text editors and version control systems to manage your work.
+
+## Features
+
+-   **Bidirectional Synchronization:** Changes made locally or in Azure DevOps are reflected on the other side.
+-   **Generic Work Item Support:** Sync any type of work item, not just Test Cases or User Stories.
+-   **Configurable Mappings:** Define which work item types to sync, where to store them, and in what format.
+-   **Local File Representation:** Work items are stored as local files (e.g., Markdown with YAML front matter), making them easy to read, edit, and version control.
+-   **"Last Write Wins" Strategy:** The tool uses a timestamp-based "last write wins" strategy to handle updates.
 
 ## Installation
 
-To install `robot_azure_sync`, you can use `pip`. Open a terminal and run:
+To install Tool Sync, you can use `pip`. Open a terminal and run:
 
 ```bash
-pip install robot_azure_sync
+pip install tool_sync
 ```
 
-## Using the project source code
+(Note: The package is not yet published to PyPI. To install from source, see the next section.)
 
-Alternatively, you can download the project source code from the repository and use it directly. You will need to have Python installed on your system.
+### Installation from Source
 
-1. Clone the repository:
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/fabioribeiroquispe/tool_sync.git
+    ```
+2.  Navigate to the project directory:
+    ```bash
+    cd tool_sync
+    ```
+3.  Install the package in editable mode:
+    ```bash
+    pip install -e .
+    ```
+
+## Configuration
+
+Tool Sync requires a `config.yml` file in the root of your project. This file defines the connection to your Azure DevOps project and how different work item types should be synchronized.
+
+Here is an example `config.yml`:
+
+```yaml
+azure_devops:
+  organization_url: "https://dev.azure.com/your_org"
+  project_name: "your_project"
+  personal_access_token: "your_pat"
+
+sync_mappings:
+  - name: "User Stories to Markdown"
+    work_item_type: "User Story"
+    local_path: "work_items/user_stories"
+    file_format: "md"
+    conflict_resolution: "manual" # 'local-wins', 'remote-wins', 'manual'
+    template: |
+      ---
+      id: {{ id }}
+      type: {{ type }}
+      state: {{ state }}
+      created_date: '{{ created_date }}'
+      changed_date: '{{ changed_date }}'
+      title: '{{ title }}'
+      ---
+
+      # {{ title }}
+
+      {{ description }}
+
+  - name: "Bugs to JSON"
+    work_item_type: "Bug"
+    local_path: "work_items/bugs"
+    file_format: "json"
+    conflict_resolution: "remote-wins"
+```
+
+### Configuration Options
+
+-   **`azure_devops`**:
+    -   `organization_url`: The URL of your Azure DevOps organization (e.g., `https://dev.azure.com/my-org`).
+    -   `project_name`: The name of your Azure DevOps project.
+    -   `personal_access_token`: Your Personal Access Token (PAT) for authenticating with the Azure DevOps API.
+-   **`sync_mappings`**: A list of mappings, where each mapping defines a sync relationship.
+    -   `name`: A descriptive name for the mapping.
+    -   `work_item_type`: The type of work item to sync (e.g., "User Story", "Bug").
+    -   `local_path`: The local directory where the files for these work items will be stored.
+    -   `file_format`: The file extension for the local files (e.g., `md`, `json`).
+    -   `conflict_resolution`: (Future feature) The strategy to use when a conflict is detected.
+    -   `template`: The template to use for generating the content of the local files. You can use placeholders like `{{ id }}`, `{{ title }}`, etc.
+
+## Usage
+
+To run the synchronization, simply execute the following command in your terminal:
 
 ```bash
-git clone https://github.com/fabiorisantosquispe/robot_azure_sync.git
+tool_sync sync
 ```
 
-2. Navigate to the project directory:
+The tool will read your `config.yml`, connect to Azure DevOps, and perform the synchronization based on your defined mappings.
 
-```bash
-cd robot_azure_sync
-```
-3. Use the provided scripts
+### Creating New Work Items
 
-- sync_utils.py: Contains utility functions for synchronization.
-- robot_azure_sync_get.py: Script to get data from Azure Test Cases.
-- robot_azure_sync_patch.py: Script to patch data to Azure Test Cases.
-- robot_azure_sync.py: Main script for synchronization and running Robot Framework tests.
+You can create a new work item in Azure DevOps by creating a new file in the corresponding local directory. The file should follow the format defined in your template, but without an `id` field in the front matter.
 
+For example, to create a new User Story, you could create a new file `work_items/user_stories/my-new-story.md` with the following content:
 
-# Usage
-## Using the installed package
-If you installed the package via pip, you can use the following commands:
+```yaml
+---
+type: User Story
+state: New
+created_date: '2023-10-27T10:00:00Z'
+changed_date: '2023-10-27T10:00:00Z'
+title: 'My New User Story'
+---
 
-```bash
-#Run synchronize_get and synchronize_patch
-robot_azure_sync
+# My New User Story
 
-#Just run sync_get
-robot_azure_sync get
-
-#Run sync_patch only
-robot_azure_sync patch
+This is the description of my new user story.
 ```
 
-## Using the project source code
-If you are using the project source code directly, you can execute the scripts using Python:
-
-```bash
-# Run synchronize_get and synchronize_patch
-python robot_azure_sync.py
-
-# Just run sync_get
-python robot_azure_sync.py get
-
-# Run sync_patch only
-python robot_azure_sync.py patch
-```
-
-# Configuration
-The package requires a configuration file **'sync_config.json'** with Azure-related settings. If the file is not found, it will be created interactively.
-
-Example **'sync_config.json'**:
-```JSON
-{
-     "path": "tests",
-     "credentials": {
-       "personal_access_token": "your_azure_personal_access_token",
-       "organization_name": "your_organization_name",
-       "project_name": "your_project_name"
-     },
-     "tag_config": {
-       "test_case": "TC",
-       "user_story": "US",
-       "bug": "Bug",
-       "title": "Title",
-       "TestedBy-Reverse": "",
-       "IterationPath": "",
-       "AutomationStatus": "",
-       "ignore_sync": "",
-       "System.Tags": "",
-       "Priority": ""
-     },
-     "constants": {
-       "System.AreaPath": "",
-       "System.TeamProject": "",
-       "settings_section": "",
-       "test_cases_section": ""
-     }
-}
-```
+The next time you run `tool_sync sync`, the tool will detect this new file, create a corresponding User Story in Azure DevOps, and then update the local file with the newly assigned ID.

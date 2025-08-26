@@ -1,4 +1,4 @@
-name: Publish robot_azure_sync 🐍 distribution 📦 to PyPI and TestPyPI
+name: Publish tool_sync 🐍 distribution 📦 to PyPI and TestPyPI
 
 on: push
 
@@ -23,25 +23,25 @@ jobs:
     - name: Build a binary wheel and a source tarball
       run: python3 -m build
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
 
   publish-to-pypi:
     name: >-
-      Publish robot_azure_sync 🐍 distribution 📦 to PyPI
+      Publish tool_sync 🐍 distribution 📦 to PyPI
     needs:
     - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/robot_azure_sync
+      url: https://pypi.org/p/tool_sync
     permissions:
       id-token: write
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
@@ -50,7 +50,7 @@ jobs:
 
   github-release:
     name: >-
-      Sign the robot_azure_sync 🐍 distribution 📦 with Sigstore
+      Sign the tool_sync 🐍 distribution 📦 with Sigstore
       and upload them to GitHub Release
     needs:
     - publish-to-pypi
@@ -62,7 +62,7 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/

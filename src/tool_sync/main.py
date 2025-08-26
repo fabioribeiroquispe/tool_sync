@@ -57,7 +57,7 @@ def main():
             run_server()
         except ImportError:
             logger.error("Analysis dependencies are not installed.")
-            logger.error("Please run 'pip install .[analysis]' to use this feature.")
+            logger.error("Please run 'pip install \"tool-sync[analysis]\"' to use this feature.")
         except Exception as e:
             logger.error(f"An unexpected error occurred while running the analysis server: {e}", exc_info=True)
 

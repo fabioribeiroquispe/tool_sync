@@ -20,6 +20,21 @@ class SyncEngine:
             config (Config): The application configuration.
         """
         self.config = config
+        self.ado_clients: dict[str, AzureDevOpsClient] = {}
+
+    def _get_ado_client(self, mapping: SyncMapping) -> AzureDevOpsClient:
+        """
+        Gets or creates an AzureDevOpsClient for a given mapping.
+        Caches clients based on organization and project to avoid re-authentication.
+        """
+        ado_config = mapping.azure_devops
+        cache_key = f"{ado_config.organization_url}/{ado_config.project_name}"
+
+        if cache_key not in self.ado_clients:
+            logger.info(f"Creating new Azure DevOps client for project: '{ado_config.project_name}'")
+            self.ado_clients[cache_key] = AzureDevOpsClient(ado_config)
+
+        return self.ado_clients[cache_key]
 
     def run(self):
         """
@@ -28,7 +43,7 @@ class SyncEngine:
         logger.info("Starting synchronization...")
         for mapping in self.config.sync_mappings:
             logger.info(f"Processing mapping: '{mapping.name}'")
-            ado_client = AzureDevOpsClient(self.config.azure_devops)
+            ado_client = self._get_ado_client(mapping)
             local_fs = LocalFileSystem(mapping)
             self._sync_mapping(mapping, ado_client, local_fs)
         logger.info("Synchronization finished.")
@@ -63,7 +78,7 @@ class SyncEngine:
 
         # 5. Process new local items -> create remote
         for new_item in new_local_items:
-            logger.info(f"New local file found: {new_item.local_path}. Creating remote work item.")
+            logger.info(f"New local file found: {new_item.local_path}. Creating remote work item in project '{mapping.azure_devops.project_name}'.")
 
             fields_to_create = {
                 "System.Title": new_item.title,
@@ -85,7 +100,7 @@ class SyncEngine:
         # 6. Process new remote items -> create locally
         for item_id in new_remote_ids:
             remote_item = remote_items_by_id[item_id]
-            logger.info(f"New remote work item found: {item_id}. Creating locally.")
+            logger.info(f"New remote work item {item_id} from project '{mapping.azure_devops.project_name}' found. Creating locally.")
             local_fs.write_work_item(remote_item)
 
         # 7. Process common items -> check for updates

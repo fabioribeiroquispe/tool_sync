@@ -52,30 +52,33 @@ azure_devops:
   personal_access_token: "your_pat"
 
 sync_mappings:
-  - name: "User Stories to Markdown"
+  - name: "User Stories for Team A"
     work_item_type: "User Story"
-    local_path: "work_items/user_stories"
+    local_path: "work_items/team_a/stories"
+    area_path: 'MyProject\\TeamA' # Optional: Sync only items from this Area Path
     file_format: "md"
-    conflict_resolution: "manual" # 'local-wins', 'remote-wins', 'manual'
+    fields_to_sync:
+      - System.State
+      - Microsoft.VSTS.Common.Priority
     template: |
       ---
       id: {{ id }}
       type: {{ type }}
-      state: {{ state }}
+      title: '{{ title }}'
+      state: {{ fields['System.State'] | default('') }}
+      priority: {{ fields['Microsoft.VSTS.Common.Priority'] | default('') }}
       created_date: '{{ created_date }}'
       changed_date: '{{ changed_date }}'
-      title: '{{ title }}'
       ---
 
       # {{ title }}
 
       {{ description }}
 
-  - name: "Bugs to JSON"
+  - name: "All Bugs"
     work_item_type: "Bug"
     local_path: "work_items/bugs"
-    file_format: "json"
-    conflict_resolution: "remote-wins"
+    file_format: "md"
 ```
 
 ### Configuration Options
@@ -88,9 +91,11 @@ sync_mappings:
     -   `name`: A descriptive name for the mapping.
     -   `work_item_type`: The type of work item to sync (e.g., "User Story", "Bug").
     -   `local_path`: The local directory where the files for these work items will be stored.
+    -   `area_path` (Optional): The Azure DevOps Area Path to filter by. If provided, only work items under this path will be synchronized.
+    -   `fields_to_sync` (Optional): A list of additional Azure DevOps fields to sync (e.g., `System.State`, `System.Tags`).
     -   `file_format`: The file extension for the local files (e.g., `md`, `json`).
     -   `conflict_resolution`: (Future feature) The strategy to use when a conflict is detected.
-    -   `template`: The template to use for generating the content of the local files. You can use placeholders like `{{ id }}`, `{{ title }}`, etc.
+    -   `template`: The Jinja2 template to use for generating the content of the local files.
 
 ## Usage
 

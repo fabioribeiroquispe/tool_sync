@@ -43,7 +43,7 @@ class SyncEngine:
             local_fs (LocalFileSystem): The manager for the local file system.
         """
         # 1. Fetch remote and local items
-        remote_items = ado_client.get_work_items(mapping.work_item_type)
+        remote_items = ado_client.get_work_items(mapping.work_item_type, mapping.area_path)
         local_items = local_fs.get_local_work_items()
 
         # 2. Separate local items with and without IDs

@@ -8,6 +8,8 @@ class AzureDevOpsConfig:
     project_name: str
     personal_access_token: str
 
+from typing import Optional
+
 @dataclass
 class SyncMapping:
     name: str
@@ -17,6 +19,7 @@ class SyncMapping:
     conflict_resolution: str
     template: str = ""
     fields_to_sync: List[str] = field(default_factory=list)
+    area_path: Optional[str] = None
 
 @dataclass
 class Config:

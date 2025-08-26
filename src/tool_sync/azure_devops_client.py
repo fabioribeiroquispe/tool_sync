@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import requests
 from dateutil.parser import parse as parse_date
@@ -39,19 +39,22 @@ class AzureDevOpsClient:
         pat = self.config.personal_access_token
         return base64.b64encode(f":{pat}".encode("ascii")).decode("ascii")
 
-    def get_work_item_ids(self, work_item_type: str) -> List[int]:
+    def get_work_item_ids(self, work_item_type: str, area_path: Optional[str] = None) -> List[int]:
         """
         Gets the IDs of all work items of a specific type.
 
         Args:
             work_item_type (str): The type of work item to query (e.g., "User Story").
+            area_path (Optional[str]): The area path to filter by.
 
         Returns:
             List[int]: A list of work item IDs.
         """
-        query = {
-            "query": f"SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] = '{work_item_type}' AND [System.TeamProject] = '{self.config.project_name}'"
-        }
+        wiql_query = f"SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] = '{work_item_type}' AND [System.TeamProject] = '{self.config.project_name}'"
+        if area_path:
+            wiql_query += f" AND [System.AreaPath] = '{area_path}'"
+
+        query = {"query": wiql_query}
         url = f"{self.base_url}/wiql?api-version=6.0"
 
         try:
@@ -94,17 +97,18 @@ class AzureDevOpsClient:
             logger.error(f"Error fetching work item {work_item_id}: {e}")
             return None
 
-    def get_work_items(self, work_item_type: str) -> List[WorkItem]:
+    def get_work_items(self, work_item_type: str, area_path: Optional[str] = None) -> List[WorkItem]:
         """
         Gets all work items of a specific type.
 
         Args:
             work_item_type (str): The type of work item to query.
+            area_path (Optional[str]): The area path to filter by.
 
         Returns:
             List[WorkItem]: A list of WorkItem objects.
         """
-        work_item_ids = self.get_work_item_ids(work_item_type)
+        work_item_ids = self.get_work_item_ids(work_item_type, area_path)
         if not work_item_ids:
             return []
 

@@ -75,6 +75,37 @@ def test_get_work_item_ids_api_error(mock_post, ado_client):
     ids = ado_client.get_work_item_ids("User Story")
     assert ids == []
 
+@patch('requests.post')
+def test_get_work_item_ids_with_area_path(mock_post, ado_client):
+    """
+    Tests that the WIQL query includes the area path when provided.
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"workItems": []}
+    mock_post.return_value = mock_response
+
+    ado_client.get_work_item_ids("User Story", "MyProject\\MyTeam")
+
+    # Check that the query sent to the API contains the Area Path clause
+    sent_query = mock_post.call_args[1]['json']['query']
+    assert "AND [System.AreaPath] = 'MyProject\\MyTeam'" in sent_query
+
+@patch('requests.post')
+def test_get_work_item_ids_without_area_path(mock_post, ado_client):
+    """
+    Tests that the WIQL query does not include the area path when not provided.
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"workItems": []}
+    mock_post.return_value = mock_response
+
+    ado_client.get_work_item_ids("User Story")
+
+    sent_query = mock_post.call_args[1]['json']['query']
+    assert "AND [System.AreaPath]" not in sent_query
+
 @patch('requests.patch')
 def test_update_work_item_success(mock_patch, ado_client):
     """

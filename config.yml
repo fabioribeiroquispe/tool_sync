@@ -7,6 +7,7 @@ sync_mappings:
   - name: "User Stories to Markdown"
     work_item_type: "User Story"
     local_path: "work_items/user_stories"
+    area_path: 'MyProject\\MyTeam' # Example Area Path
     file_format: "md"
     conflict_resolution: "manual" # 'local-wins', 'remote-wins', 'manual'
     fields_to_sync:

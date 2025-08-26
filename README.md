@@ -38,25 +38,26 @@ pip install "tool-sync[analysis]"
 
 ## Configuration
 
-Tool Sync requires a `config.yml` file in the root of your project. This file defines the connection to your Azure DevOps project and how different work item types should be synchronized.
+Tool Sync is configured via a `config.yml` file in your project's root directory. This file defines a list of "sync mappings", where each mapping is a rule that connects a remote Azure DevOps query to a local directory.
 
-Here is a more detailed example `config.yml` demonstrating multiple mappings:
+**NEW in 0.5.0:** You can now sync work items from **multiple projects** in the same configuration file.
+
+Here is a detailed example `config.yml` demonstrating multi-project synchronization:
 
 ```yaml
-# 1. Azure DevOps Connection Details
-azure_devops:
-  organization_url: "https://dev.azure.com/your_org"
-  project_name: "your_project"
-  personal_access_token: "your_pat_goes_here"
-
-# 2. Synchronization Mappings
-# Define a list of rules for what to sync and where.
+# A list of synchronization rules.
 sync_mappings:
-  # Example 1: Sync User Stories for a specific team (Team A)
-  - name: "User Stories for Team A"
+  # Example 1: Sync User Stories from 'Project Alpha' for Team A
+  - name: "Alpha Project - Team A Stories"
+    # --- Connection details for this specific mapping ---
+    azure_devops:
+      organization_url: "https://dev.azure.com/your_org"
+      project_name: "Project Alpha"
+      personal_access_token: "your_pat_goes_here"
+    # --- Sync rules for this mapping ---
     work_item_type: "User Story"
-    local_path: "work_items/team_a/stories"
-    area_path: 'your_project\\Team A' # Syncs only items from this Area Path
+    local_path: "work_items/project_alpha/stories"
+    area_path: 'Project Alpha\\Team A' # Syncs only items from this Area Path
     file_format: "md"
     fields_to_sync:
       - System.State
@@ -68,21 +69,21 @@ sync_mappings:
       title: '{{ title }}'
       state: {{ fields['System.State'] | default('New') }}
       priority: {{ fields['Microsoft.VSTS.Common.Priority'] | default(2) }}
-      created_date: '{{ created_date }}'
-      changed_date: '{{ changed_date }}'
       ---
-
-      # {{ title }}
-
       {{ description }}
 
-  # Example 2: Sync all Bugs across the entire project
-  - name: "All Bugs"
+  # Example 2: Sync all Bugs from a different project, 'Project Bravo'
+  - name: "Bravo Project - All Bugs"
+    # --- Connection details for Project Bravo ---
+    azure_devops:
+      organization_url: "https://dev.azure.com/your_org" # Can be the same or a different org
+      project_name: "Project Bravo"
+      personal_access_token: "your_other_pat_if_needed"
+    # --- Sync rules for this mapping ---
     work_item_type: "Bug"
-    local_path: "work_items/bugs"
-    # Note: No area_path is specified, so it will sync all bugs from the project.
+    local_path: "work_items/project_bravo/bugs"
+    # No area_path is specified, so it will sync all bugs from Project Bravo.
     file_format: "md"
-    # You can use a different template for different work item types
     template: |
       ---
       id: {{ id }}
@@ -92,33 +93,23 @@ sync_mappings:
       ---
       **Bug Description:**
       {{ description }}
-
-  # Example 3: Sync Tasks for the "Backend" team
-  - name: "Backend Team Tasks"
-    work_item_type: "Task"
-    local_path: "work_items/backend/tasks"
-    area_path: 'your_project\\Backend Team' # Note the different Area Path
-    file_format: "md"
-    fields_to_sync:
-      - System.State
-      - System.AssignedTo
 ```
 
 ### Configuration Options
 
--   **`azure_devops`**:
-    -   `organization_url`: The URL of your Azure DevOps organization (e.g., `https://dev.azure.com/my-org`).
-    -   `project_name`: The name of your Azure DevOps project.
-    -   `personal_access_token`: Your Personal Access Token (PAT) for authenticating with the Azure DevOps API.
--   **`sync_mappings`**: A list of mappings, where each mapping defines a sync relationship.
-    -   `name`: A descriptive name for the mapping.
-    -   `work_item_type`: The type of work item to sync (e.g., "User Story", "Bug").
-    -   `local_path`: The local directory where the files for these work items will be stored.
-    -   `area_path` (Optional): The Azure DevOps Area Path to filter by. If provided, only work items under this path will be synchronized.
-    -   `fields_to_sync` (Optional): A list of additional Azure DevOps fields to sync (e.g., `System.State`, `System.Tags`).
-    -   `file_format`: The file extension for the local files (e.g., `md`, `json`).
-    -   `conflict_resolution`: (Future feature) The strategy to use when a conflict is detected.
-    -   `template`: The Jinja2 template to use for generating the content of the local files.
+Each entry in the `sync_mappings` list has the following options:
+
+-   `name`: A descriptive name for the mapping (e.g., "Frontend Team Bugs").
+-   `azure_devops`: **(Required)** Contains the connection details for this specific mapping.
+    -   `organization_url`: The URL of your Azure DevOps organization.
+    -   `project_name`: The name of the Azure DevOps project for this mapping.
+    -   `personal_access_token`: Your Personal Access Token (PAT) for authentication.
+-   `work_item_type`: **(Required)** The type of work item to sync (e.g., "User Story", "Bug").
+-   `local_path`: **(Required)** The local directory where the files for these work items will be stored.
+-   `area_path` (Optional): The Azure DevOps Area Path to filter by. If provided, only work items under this path will be synchronized.
+-   `fields_to_sync` (Optional): A list of additional Azure DevOps fields to sync.
+-   `file_format`: **(Required)** The file extension for the local files (e.g., `md`, `json`).
+-   `template` (Optional): The Jinja2 template to use for generating the content of the local files. If omitted, a default template is used.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 import yaml
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Optional
 
 @dataclass
 class AzureDevOpsConfig:
@@ -8,22 +8,20 @@ class AzureDevOpsConfig:
     project_name: str
     personal_access_token: str
 
-from typing import Optional
-
 @dataclass
 class SyncMapping:
     name: str
     work_item_type: str
     local_path: str
     file_format: str
-    conflict_resolution: str
+    azure_devops: AzureDevOpsConfig  # Moved here
     template: str = ""
     fields_to_sync: List[str] = field(default_factory=list)
     area_path: Optional[str] = None
+    conflict_resolution: Optional[str] = "last_write_wins" # Added default
 
 @dataclass
 class Config:
-    azure_devops: AzureDevOpsConfig
     sync_mappings: List[SyncMapping]
 
 def load_config(path: str = "config.yml") -> Config:
@@ -36,19 +34,21 @@ def load_config(path: str = "config.yml") -> Config:
     Returns:
         Config: The validated configuration object.
     """
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
 
-    # Basic validation
-    if "azure_devops" not in config_data:
-        raise ValueError("Missing 'azure_devops' section in config file.")
     if "sync_mappings" not in config_data:
         raise ValueError("Missing 'sync_mappings' section in config file.")
 
-    ado_config = AzureDevOpsConfig(**config_data["azure_devops"])
+    sync_mappings = []
+    for mapping_data in config_data["sync_mappings"]:
+        if "azure_devops" not in mapping_data:
+            raise ValueError(f"Missing 'azure_devops' section in mapping: {mapping_data.get('name', 'N/A')}")
 
-    sync_mappings = [
-        SyncMapping(**mapping) for mapping in config_data["sync_mappings"]
-    ]
+        ado_config_data = mapping_data.pop("azure_devops")
+        ado_config = AzureDevOpsConfig(**ado_config_data)
 
-    return Config(azure_devops=ado_config, sync_mappings=sync_mappings)
+        mapping = SyncMapping(azure_devops=ado_config, **mapping_data)
+        sync_mappings.append(mapping)
+
+    return Config(sync_mappings=sync_mappings)

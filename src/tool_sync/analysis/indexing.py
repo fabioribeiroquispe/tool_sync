@@ -35,7 +35,7 @@ def _parse_work_item_file(file_path: str) -> Dict[str, Any] | None:
             return None
 
         front_matter_str, body = front_matter_match.groups()
-        metadata = yaml.safe_load(front_matter_str)
+        metadata = yaml.safe_load(front_matter_str) or {}
 
         # Clean HTML from the body
         soup = BeautifulSoup(body, 'html.parser')
@@ -56,7 +56,7 @@ def build_index(work_items_path: str):
     """
     Builds or updates the vector index for all work items.
     """
-    logger.info("Starting to build the vector index...")
+    logger.info(f"Starting to build the vector index from path: {work_items_path}")
 
     documents = []
     metadatas = []
@@ -78,7 +78,7 @@ def build_index(work_items_path: str):
                     metadatas.append({
                         "title": parsed_item['title'],
                         "file_path": parsed_item['file_path'],
-                        **parsed_item['metadata'] # Add all front matter metadata
+                        **parsed_item['metadata']
                     })
 
                     # Use the work item ID as the unique ID in ChromaDB
@@ -96,7 +96,6 @@ def build_index(work_items_path: str):
     logger.info("Embeddings generated. Adding to the vector database...")
 
     # Add or update the documents in ChromaDB
-    # `add` also works as an "upsert" (update/insert)
     collection.add(
         embeddings=embeddings,
         documents=documents,

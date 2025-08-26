@@ -129,12 +129,67 @@ This is the description of my new user story.
 
 The next time you run `tool_sync sync`, the tool will detect this new file, create a corresponding User Story in Azure DevOps, and then update the local file with the newly assigned ID.
 
-## Advanced Analysis with AI
+## AI-Powered Analysis with Cline
 
-This repository also includes a standalone **Analysis Server** that uses a Retrieval-Augmented Generation (RAG) pipeline to allow you to perform advanced analysis on your synchronized work items.
+`tool_sync` is more than just a synchronization tool. It includes a powerful **AI analysis engine** that can be used as a local MCP (Model Context Protocol) server for AI assistants like the [Cline VS Code extension](https://marketplace.visualstudio.com/items?itemName=cline.bot).
 
-You can use it to ask complex questions about your project's data, find patterns, and identify root causes using the power of Large Language Models (LLMs).
+This allows you to have rich, context-aware conversations about your project's data, ask complex questions, find patterns, and identify root causes.
 
-This server is designed to be used as a custom tool with AI assistants like the [Cline VS Code extension](https://marketplace.visualstudio.com/items?itemName=cline.bot).
+### How It Works
 
-For detailed instructions on how to set up and use the analysis server, please see the [README in the `analysis_server` directory](./analysis_server/README.md).
+The analysis engine uses a **Retrieval-Augmented Generation (RAG)** pipeline. When you start the server, it can index all your local work item files into a local vector database. When you ask a question via Cline, the server finds the most relevant documents and provides them as context to the LLM, leading to highly accurate and relevant answers.
+
+### Usage
+
+#### Step 1: Install All Dependencies
+
+The analysis engine requires additional libraries (`mcp`, `chromadb`, etc.). They are included in the main installation. Ensure you have installed the project from source with all dependencies:
+```bash
+pip install -e .
+```
+
+#### Step 2: Start the Analysis Server
+
+To start the MCP server, run the following command in your terminal:
+```bash
+tool_sync analyze
+```
+The server will start and listen for connections from Cline via STDIO.
+
+#### Step 3: (First time only) Index Your Documents
+
+The first time you use the analysis feature, or after you have synchronized new work items, you need to tell the server to build its knowledge base. You can do this by asking Cline to run the `index_documents` tool.
+
+Example prompt for Cline:
+> Using the `tool_sync_analyzer` tool, please run the `index_documents` command. The `work_items_path` is 'work_items/'.
+
+#### Step 4: Configure Cline
+
+You need to tell Cline how to connect to the `tool_sync` server. Open your `cline_mcp_settings.json` file and add the following server configuration.
+
+**Important:** You must replace `/path/to/your/repo/` with the absolute path to this project's directory on your machine.
+
+```json
+{
+  "mcpServers": {
+    "tool_sync_analyzer": {
+      "command": "/path/to/your/repo/venv/bin/python",
+      "args": [
+        "-m",
+        "tool_sync.main",
+        "analyze"
+      ],
+      "disabled": false
+    }
+  }
+}
+```
+*Note: The `command` should point to the Python executable within the virtual environment where you installed `tool_sync` to ensure it finds all the correct libraries.*
+
+#### Step 5: Ask Questions!
+
+Once configured, you can ask Cline complex questions about your project. Remember to tell Cline to use your tool.
+
+Example prompts for Cline:
+- "Using the `tool_sync_analyzer` tool, what is the most common cause of login errors?"
+- "Please summarize the defects related to the 'Roteirizador Product' using the `query_documents` tool."

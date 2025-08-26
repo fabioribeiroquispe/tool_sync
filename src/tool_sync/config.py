@@ -16,6 +16,7 @@ class SyncMapping:
     file_format: str
     conflict_resolution: str
     template: str = ""
+    fields_to_sync: List[str] = field(default_factory=list)
 
 @dataclass
 class Config:

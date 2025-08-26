@@ -74,3 +74,36 @@ def test_get_work_item_ids_api_error(mock_post, ado_client):
 
     ids = ado_client.get_work_item_ids("User Story")
     assert ids == []
+
+@patch('requests.patch')
+def test_update_work_item_success(mock_patch, ado_client):
+    """
+    Tests successful update of a work item.
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_patch.return_value = mock_response
+
+    fields_to_update = {"System.Title": "New Title"}
+    success = ado_client.update_work_item(1, fields_to_update)
+    assert success is True
+
+@patch('requests.post')
+def test_create_work_item_success(mock_post, ado_client):
+    """
+    Tests successful creation of a work item.
+    """
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"id": 3}
+    mock_post.return_value = mock_response
+
+    # Mock the get_work_item call that happens after creation
+    with patch.object(ado_client, 'get_work_item') as mock_get:
+        mock_get.return_value = WorkItem(id=3, title="New Item", type="Bug", state="New", description="", created_date=datetime.now(), changed_date=datetime.now())
+
+        fields_to_create = {"System.Title": "New Item"}
+        new_item = ado_client.create_work_item("Bug", fields_to_create)
+
+        assert new_item is not None
+        assert new_item.id == 3

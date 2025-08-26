@@ -7,16 +7,24 @@ sync_mappings:
   - name: "User Stories to Markdown"
     work_item_type: "User Story"
     local_path: "work_items/user_stories"
+    area_path: 'MyProject\\MyTeam' # Example Area Path
     file_format: "md"
     conflict_resolution: "manual" # 'local-wins', 'remote-wins', 'manual'
+    fields_to_sync:
+      - System.State
+      - Microsoft.VSTS.Common.Priority
+      - System.Tags
     # Template for generating file content from a work item
     template: |
       ---
       id: {{ id }}
       type: {{ type }}
-      state: {{ state }}
-      created_date: {{ created_date }}
-      changed_date: {{ changed_date }}
+      title: '{{ title }}'
+      state: {{ fields['System.State'] | default('') }}
+      priority: {{ fields['Microsoft.VSTS.Common.Priority'] | default('') }}
+      tags: '{{ fields['System.Tags'] | default('') }}'
+      created_date: '{{ created_date }}'
+      changed_date: '{{ changed_date }}'
       ---
 
       # {{ title }}

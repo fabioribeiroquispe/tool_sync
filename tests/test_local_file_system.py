@@ -14,7 +14,8 @@ def sync_mapping(tmp_path):
         local_path=str(local_path),
         file_format="md",
         conflict_resolution="manual",
-        template="---\nid: {{ id }}\ntype: {{ type }}\nstate: {{ state }}\ncreated_date: {{ created_date }}\nchanged_date: {{ changed_date }}\ntitle: {{ title }}\n---\n\n# {{ title }}\n\n{{ description }}"
+        fields_to_sync=["System.State", "Custom.Field"],
+        template="---\nid: {{ id }}\ntitle: '{{ title }}'\nstate: {{ fields['System.State'] }}\ncustom: {{ fields['Custom.Field'] }}\nchanged_date: '{{ changed_date }}'\n---\n\n{{ description }}"
     )
 
 @pytest.fixture
@@ -30,7 +31,11 @@ def sample_work_item():
         state="Active",
         description="This is a test item.",
         created_date=datetime(2023, 1, 1, 12, 0, 0),
-        changed_date=datetime(2023, 1, 1, 13, 0, 0)
+        changed_date=datetime(2023, 1, 1, 13, 0, 0),
+        fields={
+            "System.State": "Active",
+            "Custom.Field": "Custom Value"
+        }
     )
 
 def test_local_file_system_init(local_fs, sync_mapping):
@@ -51,8 +56,10 @@ def test_write_and_read_work_item(local_fs, sample_work_item):
     read_item = local_items[0]
     assert read_item.id == sample_work_item.id
     assert read_item.title == sample_work_item.title
-    assert read_item.description.strip() == f"# {sample_work_item.title}\n\n{sample_work_item.description}"
+    assert read_item.description == sample_work_item.description
     assert read_item.changed_date.replace(tzinfo=None) == sample_work_item.changed_date
+    assert read_item.state == "Active"
+    assert read_item.fields["custom"] == "Custom Value"
 
 def test_get_file_path(local_fs, sample_work_item):
     """
@@ -65,8 +72,10 @@ def test_parse_file_no_front_matter(tmp_path, local_fs):
     """
     Tests that parsing a file with no front matter returns None.
     """
-    invalid_file = tmp_path / "invalid.md"
-    invalid_file.write_text("Just some content.")
+    # Create a dummy file in the local_fs path
+    invalid_file = os.path.join(local_fs.local_path, "invalid.md")
+    with open(invalid_file, "w") as f:
+        f.write("Just some content.")
 
     item = local_fs._parse_file(str(invalid_file))
     assert item is None

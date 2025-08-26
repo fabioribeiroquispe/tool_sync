@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import yaml
+import jinja2
 from dateutil.parser import parse as parse_date
 
 from .config import SyncMapping
@@ -101,21 +102,28 @@ class LocalFileSystem:
 
             content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
 
+            # Separate core fields from custom fields
+            core_fields = {
+                'id', 'type', 'title', 'state', 'description',
+                'created_date', 'changed_date', 'local_path', 'content_hash'
+            }
+            custom_fields = {k: v for k, v in metadata.items() if k not in core_fields}
+
             created_date_val = metadata.get("created_date")
             changed_date_val = metadata.get("changed_date")
 
-            # PyYAML can automatically parse dates into datetime objects
-            created_date = created_date_val if isinstance(created_date_val, datetime) else parse_date(created_date_val)
-            changed_date = changed_date_val if isinstance(changed_date_val, datetime) else parse_date(changed_date_val)
+            created_date = created_date_val if isinstance(created_date_val, datetime) else parse_date(created_date_val) if created_date_val else None
+            changed_date = changed_date_val if isinstance(changed_date_val, datetime) else parse_date(changed_date_val) if changed_date_val else None
 
             return WorkItem(
                 id=metadata.get("id"),
                 type=metadata.get("type"),
-                title=metadata.get("title", "No Title"), # Title is in the metadata now
+                title=metadata.get("title", "No Title"),
                 state=metadata.get("state"),
                 description=description.strip(),
                 created_date=created_date,
                 changed_date=changed_date,
+                fields=custom_fields,
                 local_path=file_path,
                 content_hash=content_hash
             )
@@ -136,24 +144,14 @@ class LocalFileSystem:
         if not self.mapping.template:
             return work_item.description
 
-        # Simple string replacement for now. A more robust templating engine
-        # like Jinja2 could be used in the future.
-        template = self.mapping.template
-        content = template.replace("{{ id }}", str(work_item.id))
-        content = content.replace("{{ type }}", work_item.type)
-        content = content.replace("{{ title }}", work_item.title)
-        content = content.replace("{{ state }}", work_item.state)
-        content = content.replace("{{ created_date }}", work_item.created_date.isoformat())
-        content = content.replace("{{ changed_date }}", work_item.changed_date.isoformat())
-        content = content.replace("{{ description }}", work_item.description or "")
-
-        # Add title to metadata for parsing
-        if '---' in content:
-            parts = content.split('---', 2)
-            if len(parts) > 1:
-                front_matter = parts[1]
-                if 'title:' not in front_matter:
-                    front_matter += f"\ntitle: {work_item.title}"
-                content = f"---{front_matter}---{parts[2]}"
-
-        return content
+        template = jinja2.Template(self.mapping.template)
+        return template.render(
+            id=work_item.id,
+            type=work_item.type,
+            title=work_item.title,
+            state=work_item.state,
+            description=work_item.description,
+            created_date=work_item.created_date.isoformat() if work_item.created_date else '',
+            changed_date=work_item.changed_date.isoformat() if work_item.changed_date else '',
+            fields=work_item.fields
+        )

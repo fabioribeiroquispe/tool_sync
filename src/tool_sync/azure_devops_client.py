@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import requests
 from dateutil.parser import parse as parse_date
@@ -39,19 +39,22 @@ class AzureDevOpsClient:
         pat = self.config.personal_access_token
         return base64.b64encode(f":{pat}".encode("ascii")).decode("ascii")
 
-    def get_work_item_ids(self, work_item_type: str) -> List[int]:
+    def get_work_item_ids(self, work_item_type: str, area_path: Optional[str] = None) -> List[int]:
         """
         Gets the IDs of all work items of a specific type.
 
         Args:
             work_item_type (str): The type of work item to query (e.g., "User Story").
+            area_path (Optional[str]): The area path to filter by.
 
         Returns:
             List[int]: A list of work item IDs.
         """
-        query = {
-            "query": f"SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] = '{work_item_type}' AND [System.TeamProject] = '{self.config.project_name}'"
-        }
+        wiql_query = f"SELECT [System.Id] FROM WorkItems WHERE [System.WorkItemType] = '{work_item_type}' AND [System.TeamProject] = '{self.config.project_name}'"
+        if area_path:
+            wiql_query += f" AND [System.AreaPath] = '{area_path}'"
+
+        query = {"query": wiql_query}
         url = f"{self.base_url}/wiql?api-version=6.0"
 
         try:
@@ -94,17 +97,18 @@ class AzureDevOpsClient:
             logger.error(f"Error fetching work item {work_item_id}: {e}")
             return None
 
-    def get_work_items(self, work_item_type: str) -> List[WorkItem]:
+    def get_work_items(self, work_item_type: str, area_path: Optional[str] = None) -> List[WorkItem]:
         """
         Gets all work items of a specific type.
 
         Args:
             work_item_type (str): The type of work item to query.
+            area_path (Optional[str]): The area path to filter by.
 
         Returns:
             List[WorkItem]: A list of WorkItem objects.
         """
-        work_item_ids = self.get_work_item_ids(work_item_type)
+        work_item_ids = self.get_work_item_ids(work_item_type, area_path)
         if not work_item_ids:
             return []
 
@@ -138,22 +142,22 @@ class AzureDevOpsClient:
             )
         return work_items
 
-    def update_work_item(self, work_item: WorkItem) -> bool:
+    def update_work_item(self, work_item_id: int, fields: Dict[str, Any]) -> bool:
         """
         Updates an existing work item in Azure DevOps.
 
         Args:
-            work_item (WorkItem): The work item with updated data.
+            work_item_id (int): The ID of the work item to update.
+            fields (Dict[str, Any]): A dictionary of fields to update.
 
         Returns:
             bool: True if the update was successful, False otherwise.
         """
-        url = f"{self.base_url}/workitems/{work_item.id}?api-version=6.0"
+        url = f"{self.base_url}/workitems/{work_item_id}?api-version=6.0"
 
         # Construct the JSON patch document
         patch_document = [
-            {"op": "replace", "path": "/fields/System.Title", "value": work_item.title},
-            {"op": "replace", "path": "/fields/System.Description", "value": work_item.description},
+            {"op": "replace", "path": f"/fields/{field}", "value": value} for field, value in fields.items()
         ]
 
         try:
@@ -163,20 +167,19 @@ class AzureDevOpsClient:
                 json=patch_document
             )
             response.raise_for_status()
-            logger.info(f"Successfully updated work item {work_item.id} in Azure DevOps.")
+            logger.info(f"Successfully updated work item {work_item_id} in Azure DevOps.")
             return True
         except requests.RequestException as e:
             logger.error(f"Error updating work item {work_item.id}: {e}")
             return False
 
-    def create_work_item(self, work_item_type: str, title: str, description: str) -> WorkItem | None:
+    def create_work_item(self, work_item_type: str, fields: Dict[str, Any]) -> WorkItem | None:
         """
         Creates a new work item in Azure DevOps.
 
         Args:
             work_item_type (str): The type of the work item to create.
-            title (str): The title of the new work item.
-            description (str): The description of the new work item.
+            fields (Dict[str, Any]): A dictionary of fields for the new work item.
 
         Returns:
             WorkItem | None: The created work item, or None if creation fails.
@@ -184,8 +187,7 @@ class AzureDevOpsClient:
         url = f"{self.base_url}/workitems/${work_item_type}?api-version=6.0"
 
         patch_document = [
-            {"op": "add", "path": "/fields/System.Title", "value": title},
-            {"op": "add", "path": "/fields/System.Description", "value": description},
+            {"op": "add", "path": f"/fields/{field}", "value": value} for field, value in fields.items()
         ]
 
         try:

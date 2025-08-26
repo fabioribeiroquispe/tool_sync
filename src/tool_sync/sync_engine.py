@@ -43,7 +43,7 @@ class SyncEngine:
             local_fs (LocalFileSystem): The manager for the local file system.
         """
         # 1. Fetch remote and local items
-        remote_items = ado_client.get_work_items(mapping.work_item_type)
+        remote_items = ado_client.get_work_items(mapping.work_item_type, mapping.area_path)
         local_items = local_fs.get_local_work_items()
 
         # 2. Separate local items with and without IDs
@@ -64,10 +64,18 @@ class SyncEngine:
         # 5. Process new local items -> create remote
         for new_item in new_local_items:
             logger.info(f"New local file found: {new_item.local_path}. Creating remote work item.")
+
+            fields_to_create = {
+                "System.Title": new_item.title,
+                "System.Description": new_item.description,
+            }
+            for field_name in mapping.fields_to_sync:
+                if field_name in new_item.fields:
+                    fields_to_create[field_name] = new_item.fields[field_name]
+
             created_item = ado_client.create_work_item(
                 mapping.work_item_type,
-                new_item.title,
-                new_item.description
+                fields_to_create
             )
             if created_item:
                 # Delete old file and write new one with ID
@@ -93,6 +101,14 @@ class SyncEngine:
                 logger.info(f"Local file for work item {item_id} is newer. Updating remote.")
                 parsed_item = local_fs._parse_file(local_item.local_path)
                 if parsed_item:
-                    ado_client.update_work_item(parsed_item)
+                    fields_to_update = {
+                        "System.Title": parsed_item.title,
+                        "System.Description": parsed_item.description,
+                    }
+                    for field_name in mapping.fields_to_sync:
+                        if field_name in parsed_item.fields:
+                            fields_to_update[field_name] = parsed_item.fields[field_name]
+
+                    ado_client.update_work_item(parsed_item.id, fields_to_update)
 
         logger.info(f"Finished processing mapping: '{mapping.name}'")

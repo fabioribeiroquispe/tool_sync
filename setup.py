@@ -1,8 +1,5 @@
 from setuptools import setup, find_packages
 
-with open("requirements.txt") as f:
-    requirements = f.read().splitlines()
-
 setup(
     name='tool_sync',
     version='0.1.0',
@@ -10,7 +7,6 @@ setup(
     author_email='fabiorisantos1981@gmail.com',
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    install_requires=requirements,
     entry_points={
         'console_scripts': [
             'tool_sync=tool_sync.main:main',
@@ -25,7 +21,6 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.10',
     ],

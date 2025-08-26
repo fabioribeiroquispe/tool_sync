@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any
 
+# Import the shared model and collection from the indexing module
 from .indexing import embedding_model, collection
 
 # Set up logging
@@ -31,7 +32,9 @@ def query_index(question: str, n_results: int = 5) -> List[Dict[str, Any]]:
     try:
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=n_results
+            n_results=n_results,
+            # We only need the documents and metadata for the context
+            include=['metadatas', 'documents']
         )
         logger.info(f"Found {len(results.get('documents', [[]])[0])} relevant documents.")
         return results

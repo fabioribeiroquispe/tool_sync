@@ -55,8 +55,9 @@ def main():
         try:
             from .mcp_server import run_server
             run_server()
-        except ImportError:
-            logger.error("Analysis dependencies are not installed.")
+        except ImportError as e:
+            logger.error("Analysis dependencies are not installed.", exc_info=True)
+            logger.error(f"Underlying error: {e}")
             logger.error("Please run 'pip install \"tool-sync[analysis]\"' to use this feature.")
         except Exception as e:
             logger.error(f"An unexpected error occurred while running the analysis server: {e}", exc_info=True)

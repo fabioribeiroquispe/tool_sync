@@ -40,19 +40,23 @@ pip install "tool-sync[analysis]"
 
 Tool Sync requires a `config.yml` file in the root of your project. This file defines the connection to your Azure DevOps project and how different work item types should be synchronized.
 
-Here is an example `config.yml`:
+Here is a more detailed example `config.yml` demonstrating multiple mappings:
 
 ```yaml
+# 1. Azure DevOps Connection Details
 azure_devops:
   organization_url: "https://dev.azure.com/your_org"
   project_name: "your_project"
-  personal_access_token: "your_pat"
+  personal_access_token: "your_pat_goes_here"
 
+# 2. Synchronization Mappings
+# Define a list of rules for what to sync and where.
 sync_mappings:
+  # Example 1: Sync User Stories for a specific team (Team A)
   - name: "User Stories for Team A"
     work_item_type: "User Story"
     local_path: "work_items/team_a/stories"
-    area_path: 'MyProject\\TeamA' # Optional: Sync only items from this Area Path
+    area_path: 'your_project\\Team A' # Syncs only items from this Area Path
     file_format: "md"
     fields_to_sync:
       - System.State
@@ -62,8 +66,8 @@ sync_mappings:
       id: {{ id }}
       type: {{ type }}
       title: '{{ title }}'
-      state: {{ fields['System.State'] | default('') }}
-      priority: {{ fields['Microsoft.VSTS.Common.Priority'] | default('') }}
+      state: {{ fields['System.State'] | default('New') }}
+      priority: {{ fields['Microsoft.VSTS.Common.Priority'] | default(2) }}
       created_date: '{{ created_date }}'
       changed_date: '{{ changed_date }}'
       ---
@@ -72,10 +76,32 @@ sync_mappings:
 
       {{ description }}
 
+  # Example 2: Sync all Bugs across the entire project
   - name: "All Bugs"
     work_item_type: "Bug"
     local_path: "work_items/bugs"
+    # Note: No area_path is specified, so it will sync all bugs from the project.
     file_format: "md"
+    # You can use a different template for different work item types
+    template: |
+      ---
+      id: {{ id }}
+      title: '{{ title }}'
+      state: {{ fields['System.State'] | default('New') }}
+      severity: {{ fields['Microsoft.VSTS.Common.Severity'] | default('3 - Medium') }}
+      ---
+      **Bug Description:**
+      {{ description }}
+
+  # Example 3: Sync Tasks for the "Backend" team
+  - name: "Backend Team Tasks"
+    work_item_type: "Task"
+    local_path: "work_items/backend/tasks"
+    area_path: 'your_project\\Backend Team' # Note the different Area Path
+    file_format: "md"
+    fields_to_sync:
+      - System.State
+      - System.AssignedTo
 ```
 
 ### Configuration Options
@@ -136,50 +162,66 @@ This allows you to have rich, context-aware conversations about your project's d
 
 The analysis engine uses a **Retrieval-Augmented Generation (RAG)** pipeline. When you start the server, it can index all your local work item files into a local vector database. When you ask a question via Cline, the server finds the most relevant documents and provides them as context to the LLM, leading to highly accurate and relevant answers.
 
-### Usage
+### Using the Analysis Engine with Cline
 
-#### Step 1: Start the Analysis Server
+To use the AI-powered analysis features, you will need an MCP client like the [Cline VS Code extension](https://marketplace.visualstudio.com/items?itemName=cline.bot). The following steps will guide you through the setup and usage.
 
-To start the MCP server, run the following command in your terminal:
-```bash
-tool_sync analyze
-```
-The server will start and listen for connections from Cline via STDIO.
+#### Step 1: Configure the Cline MCP Server
 
-#### Step 2: (First time only) Index Your Documents
+This is the most crucial step. You need to tell Cline how to start the `tool_sync` server.
 
-The first time you use the analysis feature, or after you have synchronized new work items, you need to tell the server to build its knowledge base. You can do this by asking Cline to run the `index_documents` tool.
+1.  **Find the settings file:** In VS Code, click on the **MCP Servers** icon in the activity bar. This will open a new panel.
+2.  **Open the configuration:** In the MCP Servers panel, go to the **Installed** tab, find your `tool_sync_analyzer` server (it may appear here after the first attempt to use it), or simply click the "Configure MCP Servers" button or link. This will open the `cline_mcp_settings.json` file.
 
-Example prompt for Cline:
-> Using the `tool_sync_analyzer` tool, please run the `index_documents` command. The `work_items_path` is 'work_items/'.
+3.  **Update the configuration:** Paste the following JSON into the file. You **must** replace the placeholder path with the **absolute path** to the Python executable in your virtual environment.
 
-#### Step 3: Configure Cline
-
-You need to tell Cline how to connect to the `tool_sync` server. Open your `cline_mcp_settings.json` file and add the following server configuration.
-
-**Important:** You must replace `/path/to/your/repo/` with the absolute path to this project's directory on your machine.
-
-```json
-{
-  "mcpServers": {
-    "tool_sync_analyzer": {
-      "command": "/path/to/your/repo/venv/bin/python",
-      "args": [
-        "-m",
-        "tool_sync.main",
-        "analyze"
-      ],
-      "disabled": false
+    ```json
+    {
+      "mcpServers": {
+        "tool_sync_analyzer": {
+          "command": "C:\\path\\to\\your\\project\\.venv\\Scripts\\python.exe",
+          "args": [
+            "-m",
+            "tool_sync.main",
+            "analyze"
+          ],
+          "env": {
+            "ANONYMIZED_TELEMETRY": "False"
+          },
+          "disabled": false,
+          "timeout": 3600
+        }
+      }
     }
-  }
-}
-```
-*Note: The `command` should point to the Python executable within the virtual environment where you installed `tool_sync` to ensure it finds all the correct libraries.*
+    ```
+
+    **Configuration Notes:**
+    - **`command`**: This **must** be the full, absolute path to your Python executable. On Windows, use double backslashes (`\\`). To find the path, activate your virtual environment and run `where python` (Windows) or `which python` (Linux/macOS).
+    - **`env`**: This block is important. `ANONYMIZED_TELEMETRY: "False"` prevents some known stability issues with the `chromadb` dependency.
+    - **`timeout`**: Increasing the timeout to `3600` seconds can help prevent the server from stopping during long-running tasks like indexing.
+
+4.  **Restart VS Code:** It's good practice to restart VS Code to ensure Cline picks up the new configuration.
+
+#### Step 2: Verify the Connection
+
+After restarting VS Code, open the Cline chat. Type `@` and a list of available tools should appear. If you see **`@tool_sync_analyzer`** in the list, the connection was successful!
+
+#### Step 3: Index Your Work Items
+
+Before you can ask questions, the server needs to build its knowledge base from your local files.
+
+In the Cline chat, send the following command:
+
+> @tool_sync_analyzer index_documents work_items_path='work_items/'
+
+You should receive a success message like: `"Successfully indexed documents. The knowledge base is ready."`
 
 #### Step 4: Ask Questions!
 
-Once configured, you can ask Cline complex questions about your project. Remember to tell Cline to use your tool.
+Now you can query your knowledge base. Ask questions related to the content of your work item files.
 
 Example prompts for Cline:
-- "Using the `tool_sync_analyzer` tool, what is the most common cause of login errors?"
-- "Please summarize the defects related to the 'new API' using the `query_documents` tool."
+- `@tool_sync_analyzer query_documents question='What is the most common cause of login errors?'`
+- `@tool_sync_analyzer query_documents question='Summarize all defects related to the new API'`
+
+The server will respond with the most relevant documents it found, providing rich, project-specific context for your questions.

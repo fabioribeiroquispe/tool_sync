@@ -13,93 +13,116 @@ from sentence_transformers import SentenceTransformer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize the embedding model
-# This will download the model the first time it's run
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+# --- Constants ---
+CODE_FILE_EXTENSIONS = {
+    ".py", ".js", ".ts", ".java", ".cs", ".go", ".rs", ".c", ".cpp", ".h", ".hpp",
+    ".html", ".css", ".scss", ".sql", ".sh", ".rb", ".php", ".swift", ".kt",
+}
 
-# Initialize ChromaDB client and disable telemetry to prevent errors
-# This will create a local, persistent database in the 'chroma_db' directory
+# --- ChromaDB Initialization ---
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 db_client = chromadb.PersistentClient(
     path="chroma_db",
     settings=Settings(anonymized_telemetry=False)
 )
-collection = db_client.get_or_create_collection(name="work_items")
+# Using a more generic collection name
+collection = db_client.get_or_create_collection(name="project_knowledge_base")
+
+# --- Parsers ---
 
 def _parse_work_item_file(file_path: str) -> Dict[str, Any] | None:
     """
-    Parses a single work item file and returns its content.
+    Parses a single work item file with YAML front matter.
+    Returns a dictionary with parsed data or None if it's not a valid work item file.
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
         front_matter_match = re.match(r"---\s*\n(.*?)\n---\s*\n(.*)", content, re.DOTALL)
         if not front_matter_match:
-            logger.warning(f"Could not parse front matter from {file_path}")
-            return None
+            return None # Not a valid work item file
 
         front_matter_str, body = front_matter_match.groups()
         metadata = yaml.safe_load(front_matter_str) or {}
 
-        # Clean HTML from the body
         soup = BeautifulSoup(body, 'html.parser')
         cleaned_body = soup.get_text(separator=' ', strip=True)
 
         return {
-            "id": metadata.get("id"),
-            "title": metadata.get("title"),
-            "body": cleaned_body,
-            "metadata": metadata,
-            "file_path": file_path
+            "id": str(metadata.get("id")),
+            "text_to_embed": f"Title: {metadata.get('title', '')}\n\n{cleaned_body}",
+            "metadata": { "file_type": "work_item", "file_path": file_path, **metadata }
         }
-    except Exception as e:
-        logger.error(f"Error parsing file {file_path}: {e}")
+    except Exception:
+        logger.warning(f"Could not parse work item {file_path}, treating as plain text.")
         return None
 
-def build_index(work_items_path: str):
+def _parse_plain_text_file(file_path: str) -> Dict[str, Any] | None:
     """
-    Builds or updates the vector index for all work items.
+    Parses any file as plain text. Used for source code and other documents.
     """
-    logger.info(f"Starting to build the vector index from path: {work_items_path}")
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+
+        if not content.strip():
+            return None # Skip empty files
+
+        return {
+            "id": file_path, # Use file path as the unique ID for code files
+            "text_to_embed": content,
+            "metadata": { "file_type": "source_code", "file_path": file_path }
+        }
+    except Exception as e:
+        logger.error(f"Error reading file {file_path} as plain text: {e}")
+        return None
+
+# --- Main Indexing Logic ---
+
+def build_index(paths_to_index: List[str]):
+    """
+    Builds or updates the vector index from a list of local directories.
+    It can index both structured work items (.md) and source code files.
+    """
+    logger.info(f"Starting to build vector index from paths: {paths_to_index}")
 
     documents = []
     metadatas = []
     ids = []
 
-    for root, _, files in os.walk(work_items_path):
-        for file_name in files:
-            if file_name.endswith(".md"):
+    for path in paths_to_index:
+        if not os.path.isdir(path):
+            logger.warning(f"Path '{path}' is not a valid directory, skipping.")
+            continue
+
+        for root, _, files in os.walk(path):
+            for file_name in files:
                 file_path = os.path.join(root, file_name)
-                parsed_item = _parse_work_item_file(file_path)
+                _, file_extension = os.path.splitext(file_name)
 
-                if parsed_item and parsed_item.get("id"):
-                    # Prepare the text to be embedded
-                    text_to_embed = f"Title: {parsed_item['title']}\n\n{parsed_item['body']}"
+                parsed_data = None
+                if file_extension == ".md":
+                    # Try to parse as a work item first
+                    parsed_data = _parse_work_item_file(file_path)
 
-                    documents.append(text_to_embed)
+                if parsed_data is None and (file_extension == ".md" or file_extension in CODE_FILE_EXTENSIONS):
+                    # If it's not a work item, or if it's a code file, parse as plain text
+                    parsed_data = _parse_plain_text_file(file_path)
 
-                    # Store useful metadata
-                    metadatas.append({
-                        "title": parsed_item['title'],
-                        "file_path": parsed_item['file_path'],
-                        **parsed_item['metadata']
-                    })
-
-                    # Use the work item ID as the unique ID in ChromaDB
-                    ids.append(str(parsed_item['id']))
+                if parsed_data:
+                    documents.append(parsed_data["text_to_embed"])
+                    metadatas.append(parsed_data["metadata"])
+                    ids.append(parsed_data["id"])
 
     if not documents:
-        logger.warning("No valid work item files found to index.")
+        logger.warning("No valid files found to index in the provided paths.")
         return
 
     logger.info(f"Found {len(documents)} documents to index. Generating embeddings...")
-
-    # Generate embeddings for all documents in a batch
-    embeddings = embedding_model.encode(documents).tolist()
+    embeddings = embedding_model.encode(documents, show_progress_bar=True).tolist()
 
     logger.info("Embeddings generated. Adding to the vector database...")
-
-    # Add or update the documents in ChromaDB
     collection.add(
         embeddings=embeddings,
         documents=documents,
@@ -107,4 +130,4 @@ def build_index(work_items_path: str):
         ids=ids
     )
 
-    logger.info(f"Successfully indexed {len(documents)} documents. Index is ready.")
+    logger.info(f"Successfully indexed {len(documents)} documents. Knowledge base is updated.")

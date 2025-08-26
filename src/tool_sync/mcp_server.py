@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from mcp.server.fastmcp import FastMCP
-from typing import Optional
+from typing import Optional, List
 
 from .analysis.indexing import build_index
 from .analysis.query import query_index
@@ -16,23 +16,21 @@ mcp = FastMCP(
 )
 
 @mcp.tool()
-def index_documents(work_items_path: str) -> str:
+def index_documents(paths: List[str]) -> str:
     """
-    Builds or updates the knowledge base from local work item files.
+    Builds or updates the knowledge base from a list of local directories.
+    Can index work items, source code, and other text files.
 
-    :param work_items_path: The relative path to the directory containing the work item files (e.g., 'work_items/').
+    :param paths: A list of local directory or file paths to index. Paths can be absolute or relative.
     """
-    logger.info(f"Received request to index documents at path: {work_items_path}")
-    if not work_items_path:
-        raise ValueError("'work_items_path' is a required parameter.")
+    logger.info(f"Received request to index documents at paths: {paths}")
+    if not paths:
+        raise ValueError("'paths' is a required parameter and cannot be empty.")
 
-    # Running indexing in a separate thread to not block the server,
-    # but FastMCP handles async calls correctly.
-    # For simplicity, we'll run it directly. If it's too slow,
-    # we can use asyncio.to_thread in the future.
     try:
-        build_index(work_items_path)
-        return "Successfully indexed documents. The knowledge base is ready."
+        # The build_index function now accepts a list of paths
+        build_index(paths)
+        return "Successfully indexed all provided paths. The knowledge base is ready."
     except Exception as e:
         logger.error(f"Error during indexing: {e}", exc_info=True)
         raise ValueError(f"An error occurred during indexing: {e}")

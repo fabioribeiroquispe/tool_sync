@@ -197,15 +197,21 @@ This is the most crucial step. You need to tell Cline how to start the `tool_syn
 
 After restarting VS Code, open the Cline chat. Type `@` and a list of available tools should appear. If you see **`@tool_sync_analyzer`** in the list, the connection was successful!
 
-#### Step 3: Index Your Work Items
+#### Step 3: Index Your Knowledge Base
 
-Before you can ask questions, the server needs to build its knowledge base from your local files.
+Before you can ask questions, the server needs to build its knowledge base. With the new version, you can index **multiple folders**, including your work items, source code, and automated tests.
 
-In the Cline chat, send the following command:
+In the Cline chat, send a command listing all the paths you want to index. **Paths can be absolute or relative.**
 
-> @tool_sync_analyzer index_documents work_items_path='work_items/'
+**Example for indexing work items and source code:**
+> @tool_sync_analyzer index_documents paths=['work_items/', 'src/', 'tests/']
 
-You should receive a success message like: `"Successfully indexed documents. The knowledge base is ready."`
+**Example using absolute paths (useful if running `tool_sync` from a different directory):**
+> @tool_sync_analyzer index_documents paths=['D:\\my_project\\work_items', 'D:\\my_project\\src']
+
+You should receive a success message like: `"Successfully indexed all provided paths. The knowledge base is ready."`
+
+This makes the analysis engine much more powerful, as it can now answer questions about your source code and tests in addition to your work items. It also allows the `tool_sync` server to be run from anywhere, as long as you provide absolute paths to the content you want to analyze.
 
 #### Step 4: Ask Questions!
 

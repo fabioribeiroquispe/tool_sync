@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 # Initialize the MCP server with a friendly name
 mcp = FastMCP(
     name="tool_sync_analyzer",
-    version="0.2.0", # Aligning version with package
 )
 
 @mcp.tool()

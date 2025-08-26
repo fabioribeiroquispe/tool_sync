@@ -26,8 +26,6 @@ jobs:
         with:
           name: python-package-distributions
           path: dist/
-        # Retry simples em caso de falha intermitente
-        continue-on-error: false
 
   publish-to-pypi:
     name: Publish tool_sync 🐍 distribution 📦 to PyPI
@@ -85,3 +83,22 @@ jobs:
         run: |
           gh release upload "${{ github.ref_name }}" dist/** \
           --repo "${{ github.repository }}"
+
+  # Exemplo de atualização de Actions opcionais (caso você use Hugo ou Pages)
+  pages-deploy:
+    name: Deploy Hugo Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache
+          key: hugo-pages-cache
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.115.0"
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public

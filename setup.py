@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='tool_sync',
-    version='0.3.4',
+    version='0.3.5',
     author='Fábio Ribeiro dos Santos Quispe',
     author_email='fabiorisantos1981@gmail.com',
     packages=find_packages(where="src"),

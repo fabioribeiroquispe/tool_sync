@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 import yaml
 from bs4 import BeautifulSoup
 import chromadb
+from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 # Set up logging
@@ -16,9 +17,12 @@ logger = logging.getLogger(__name__)
 # This will download the model the first time it's run
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Initialize ChromaDB client
+# Initialize ChromaDB client and disable telemetry to prevent errors
 # This will create a local, persistent database in the 'chroma_db' directory
-db_client = chromadb.PersistentClient(path="chroma_db")
+db_client = chromadb.PersistentClient(
+    path="chroma_db",
+    settings=Settings(anonymized_telemetry=False)
+)
 collection = db_client.get_or_create_collection(name="work_items")
 
 def _parse_work_item_file(file_path: str) -> Dict[str, Any] | None:

@@ -182,4 +182,4 @@ Once configured, you can ask Cline complex questions about your project. Remembe
 
 Example prompts for Cline:
 - "Using the `tool_sync_analyzer` tool, what is the most common cause of login errors?"
-- "Please summarize the defects related to the 'Roteirizador Product' using the `query_documents` tool."
+- "Please summarize the defects related to the 'new API' using the `query_documents` tool."

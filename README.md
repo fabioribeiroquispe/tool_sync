@@ -16,28 +16,25 @@ This enables a "Work-Items-as-Code" approach, where your Azure DevOps project ca
 
 ## Installation
 
-To install Tool Sync, you can use `pip`. Open a terminal and run:
+`tool-sync` offers two installation options depending on your needs.
+
+### Standard Installation (Synchronization only)
+
+For the core synchronization features, you can install the package directly using pip:
 
 ```bash
-pip install tool_sync
+pip install tool-sync
 ```
 
-(Note: The package is not yet published to PyPI. To install from source, see the next section.)
+This will provide you with the `tool_sync sync` command and all necessary functionality to synchronize your work items.
 
-### Installation from Source
+### Installation with Analysis Features
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/fabioribeiroquispe/tool_sync.git
-    ```
-2.  Navigate to the project directory:
-    ```bash
-    cd tool_sync
-    ```
-3.  Install the package in editable mode:
-    ```bash
-    pip install -e .
-    ```
+To use the AI-powered analysis server with assistants like Cline, you need to install the package with the `[analysis]` extra. This includes additional libraries for vector indexing and language processing.
+
+```bash
+pip install "tool-sync[analysis]"
+```
 
 ## Configuration
 
@@ -141,14 +138,7 @@ The analysis engine uses a **Retrieval-Augmented Generation (RAG)** pipeline. Wh
 
 ### Usage
 
-#### Step 1: Install All Dependencies
-
-The analysis engine requires additional libraries (`mcp`, `chromadb`, etc.). They are included in the main installation. Ensure you have installed the project from source with all dependencies:
-```bash
-pip install -e .
-```
-
-#### Step 2: Start the Analysis Server
+#### Step 1: Start the Analysis Server
 
 To start the MCP server, run the following command in your terminal:
 ```bash
@@ -156,14 +146,14 @@ tool_sync analyze
 ```
 The server will start and listen for connections from Cline via STDIO.
 
-#### Step 3: (First time only) Index Your Documents
+#### Step 2: (First time only) Index Your Documents
 
 The first time you use the analysis feature, or after you have synchronized new work items, you need to tell the server to build its knowledge base. You can do this by asking Cline to run the `index_documents` tool.
 
 Example prompt for Cline:
 > Using the `tool_sync_analyzer` tool, please run the `index_documents` command. The `work_items_path` is 'work_items/'.
 
-#### Step 4: Configure Cline
+#### Step 3: Configure Cline
 
 You need to tell Cline how to connect to the `tool_sync` server. Open your `cline_mcp_settings.json` file and add the following server configuration.
 
@@ -186,7 +176,7 @@ You need to tell Cline how to connect to the `tool_sync` server. Open your `clin
 ```
 *Note: The `command` should point to the Python executable within the virtual environment where you installed `tool_sync` to ensure it finds all the correct libraries.*
 
-#### Step 5: Ask Questions!
+#### Step 4: Ask Questions!
 
 Once configured, you can ask Cline complex questions about your project. Remember to tell Cline to use your tool.
 

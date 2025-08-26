@@ -3,6 +3,19 @@ import re
 import logging
 from typing import List, Dict, Any
 
+# --- Monkey-patch for ChromaDB Telemetry ---
+# The version of chromadb used has a bug where its telemetry client (posthog)
+# can cause instability. We forcefully disable it here as a workaround.
+try:
+    import chromadb.telemetry.product.posthog
+    def do_nothing(*args, **kwargs):
+        pass
+    chromadb.telemetry.product.posthog.Posthog.capture = do_nothing
+    logging.info("Successfully monkey-patched ChromaDB telemetry.")
+except ImportError:
+    logging.warning("Could not import ChromaDB telemetry module to monkey-patch.")
+# --- End of Monkey-patch ---
+
 import yaml
 from bs4 import BeautifulSoup
 import chromadb

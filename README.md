@@ -176,9 +176,6 @@ This is the most crucial step. You need to tell Cline how to start the `tool_syn
             "tool_sync.main",
             "analyze"
           ],
-          "env": {
-            "ANONYMIZED_TELEMETRY": "False"
-          },
           "disabled": false,
           "timeout": 3600
         }
@@ -188,7 +185,6 @@ This is the most crucial step. You need to tell Cline how to start the `tool_syn
 
     **Configuration Notes:**
     - **`command`**: This **must** be the full, absolute path to your Python executable. On Windows, use double backslashes (`\\`). To find the path, activate your virtual environment and run `where python` (Windows) or `which python` (Linux/macOS).
-    - **`env`**: This block is important. `ANONYMIZED_TELEMETRY: "False"` prevents some known stability issues with the `chromadb` dependency.
     - **`timeout`**: Increasing the timeout to `3600` seconds can help prevent the server from stopping during long-running tasks like indexing.
 
 4.  **Restart VS Code:** It's good practice to restart VS Code to ensure Cline picks up the new configuration.

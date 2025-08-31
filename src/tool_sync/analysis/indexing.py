@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import uuid
 from typing import List, Dict, Any, Generator
 
 import yaml
@@ -72,7 +73,7 @@ def _parse_work_item_file(file_path: str) -> Dict[str, Any] | None:
             metadata[key] = str(value)
 
         return {
-            "id": str(metadata.get("id")),
+            "id": str(uuid.uuid5(uuid.NAMESPACE_DNS, file_path)),
             "document": f"Title: {metadata.get('title', '')}\n\n{cleaned_body}",
             "metadata": { "file_type": "work_item", "file_path": file_path, **metadata }
         }
@@ -92,7 +93,7 @@ def _parse_plain_text_file(file_path: str) -> Dict[str, Any] | None:
             return None # Skip empty files
 
         return {
-            "id": file_path, # Use file path as the unique ID for code files
+            "id": str(uuid.uuid5(uuid.NAMESPACE_DNS, file_path)),
             "document": content,
             "metadata": { "file_type": "source_code", "file_path": file_path }
         }
